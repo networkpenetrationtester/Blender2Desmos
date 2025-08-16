@@ -62,7 +62,7 @@ app.get("/ping", (req, res) => {
 })
 
 app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/www/index.html");
+    res.sendFile(__dirname + "\\www\\index.html");
 });
 
 io.on("connection", async (socket) => {
@@ -79,8 +79,9 @@ io.on("connection", async (socket) => {
                 faces: data.faces,
                 mode: data.mode
             }));
-            fs.writeFileSync(`${__dirname}\\object.json`, JSON.stringify(data), { encoding: "utf-8" });
-            console.log(`BLENDER -> DESMOS Sending graph data & Saving meshdata to ${__dirname}\\object.json`)
+			let path = `${__dirname}\\cache\\object.json`;
+            fs.writeFileSync(path, JSON.stringify(data), { encoding: "utf-8" });
+            console.log(`BLENDER -> DESMOS Sending graph data & Saving meshdata to ${path}`)
         } catch (e) {
             console.error(e);
         }
@@ -96,7 +97,7 @@ io.on("connection", async (socket) => {
     });
 
     socket.on("Awake", async () => {
-        await LoadCached(`${__dirname}\\object.json`);
+        await LoadCached(`${__dirname}\\cache\\object.json`);
         io.emit("Desmos", JSON.stringify({
             vertices: tmp.vertices,
             faces: tmp.faces,
