@@ -1,17 +1,29 @@
 const fs = require("node:fs");
-var _Vertices = [], _Faces = [], _Mode;
+const express = require("express");
+const cors = require("cors");
+const app = express();
+const http = require("http");
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+var tmp = {vertices:[], faces:[], mode: ""};
 
 async function LoadFromObj(filename) {
-    _Vertices = [];
-    _Faces = [];
-    _Mode = "wireframe"
+    tmp.vertices = [];
+    tmp.faces = [];
+    tmp.mode = "wireframe"
     let file = fs.readFileSync(filename, { encoding: "utf-8" });
     for (let line of file.split("\n")) {
         let parts = line.split(" ");
         switch (parts.shift()) {
             case "v":
                 let coord = `(${parts.join(",")})`;
-                _Vertices.push(coord);
+                tmp.vertices.push(coord);
                 break;
             case "f":
                 let vertices = parts.map((bundle) => {
@@ -21,7 +33,7 @@ async function LoadFromObj(filename) {
                 vertices = vertices.map((indice) => {
                     return `v[${indice}]`;
                 });
-                _Faces.push(`[${vertices.join(",")}]`);
+                tmp.faces.push(`[${vertices.join(",")}]`);
                 break;
         }
     }
@@ -33,9 +45,9 @@ async function LoadCached(filename) {
     let data = fs.readFileSync(filename, { encoding: "utf-8" });
     try {
         data = JSON.parse(data);
-        _Vertices = data.vertices;
-        _Faces = data.faces;
-        _Mode = data.mode;
+        tmp.vertices = data.vertices;
+        tmp.faces = data.faces;
+        tmp.mode = data.mode;
     } catch (e) {
         console.error(e);
     }
@@ -43,30 +55,14 @@ async function LoadCached(filename) {
     return;
 }
 
-const express = require("express");
-const cors = require("cors");
-const app = express();
 app.use(cors());
-const http = require("http");
-const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
 
 app.get("/ping", (req, res) => {
     res.sendStatus(200);
 })
 
 app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/index.html");
-});
-
-app.get("/calculator.js", (req, res) => {
-    res.sendFile(__dirname + "/calculator.js");
+    res.sendFile(__dirname + "/www/index.html");
 });
 
 io.on("connection", async (socket) => {
@@ -102,9 +98,9 @@ io.on("connection", async (socket) => {
     socket.on("Awake", async () => {
         await LoadCached(`${__dirname}\\object.json`);
         io.emit("Desmos", JSON.stringify({
-            vertices: _Vertices,
-            faces: _Faces,
-            mode: _Mode
+            vertices: tmp.vertices,
+            faces: tmp.faces,
+            mode: tmp.mode
         }));
     });
 });
